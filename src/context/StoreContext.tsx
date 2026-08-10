@@ -95,12 +95,62 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [cart]);
 
   useEffect(() => {
-    localStorage.setItem('savour_orders', JSON.stringify(orders));
-  }, [orders]);
-
-  useEffect(() => {
     localStorage.setItem('savour_waiter_requests', JSON.stringify(waiterRequests));
   }, [waiterRequests]);
+
+  const CLOUD_SYNC_ORDERS_URL = 'https://kvdb.io/KG4zVw2Mke6GtrQbFnPdQy/savour_orders_v3';
+
+  // Push orders to cloud whenever orders state changes locally
+  const pushOrdersToCloud = useCallback(async (currentOrders: Order[]) => {
+    try {
+      await fetch(CLOUD_SYNC_ORDERS_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentOrders),
+      });
+    } catch {
+      // Ignore network errors
+    }
+  }, []);
+
+  // Poll cloud storage every 4 seconds for real-time cross-device sync
+  useEffect(() => {
+    const syncFromCloud = async () => {
+      try {
+        const res = await fetch(CLOUD_SYNC_ORDERS_URL);
+        if (!res.ok) return;
+        const cloudOrders: Order[] = await res.json();
+        if (Array.isArray(cloudOrders) && cloudOrders.length > 0) {
+          setOrders((prev) => {
+            let updated = false;
+            const merged = [...prev];
+            cloudOrders.forEach((co) => {
+              const idx = merged.findIndex((o) => o.id === co.id);
+              if (idx === -1) {
+                merged.unshift(co);
+                updated = true;
+              } else if (merged[idx].status !== co.status || merged[idx].updated_at !== co.updated_at) {
+                merged[idx] = co;
+                updated = true;
+              }
+            });
+            return updated ? merged : prev;
+          });
+        }
+      } catch {
+        // Ignore fetch errors
+      }
+    };
+
+    syncFromCloud();
+    const interval = setInterval(syncFromCloud, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('savour_orders', JSON.stringify(orders));
+    pushOrdersToCloud(orders);
+  }, [orders, pushOrdersToCloud]);
 
   // Broadcast Channel setup for Instant Cross-Tab Sync
   const broadcastSync = useCallback((event: { type: string; payload: any }) => {

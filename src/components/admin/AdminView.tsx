@@ -69,11 +69,13 @@ export const AdminView: React.FC = () => {
       const d = new Date(o.created_at);
 
       if (timeRange === 'today') {
-        return (
+        const isSameDay = (
           d.getFullYear() === now.getFullYear() &&
           d.getMonth() === now.getMonth() &&
           d.getDate() === now.getDate()
         );
+        const isWithin24Hours = (now.getTime() - d.getTime()) <= 24 * 60 * 60 * 1000 && d <= now;
+        return isSameDay || isWithin24Hours;
       }
       if (timeRange === 'weekly') {
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
