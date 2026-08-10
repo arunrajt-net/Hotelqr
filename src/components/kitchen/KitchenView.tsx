@@ -130,7 +130,7 @@ export const KitchenView: React.FC = () => {
   }
 
   const activeOrders = orders.filter((o) =>
-    ['placed', 'accepted', 'preparing', 'ready'].includes(o.status)
+    !o.isMock && ['placed', 'accepted', 'preparing', 'ready'].includes(o.status)
   );
 
   const getElapsedBadge = (createdAt: number) => {

@@ -69,7 +69,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem('savour_orders');
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    const parsed: Order[] = saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    return parsed.map((o) =>
+      o.isMock && ['placed', 'accepted', 'preparing', 'ready'].includes(o.status)
+        ? { ...o, status: 'completed' as const }
+        : o
+    );
   });
 
   const [waiterRequests, setWaiterRequests] = useState<WaiterRequest[]>(() => {

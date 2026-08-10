@@ -487,13 +487,14 @@ export const INITIAL_ORDERS: Order[] = ([
     tax: 3.52,
     tip: 5,
     total: 43.72,
-    status: 'preparing',
+    status: 'completed',
     created_at: Date.now() - 1000 * 60 * 7,
     updated_at: Date.now() - 1000 * 60 * 2,
     status_history: [
       { status: 'placed', changed_at: Date.now() - 1000 * 60 * 7 },
       { status: 'accepted', changed_at: Date.now() - 1000 * 60 * 5 },
-      { status: 'preparing', changed_at: Date.now() - 1000 * 60 * 2 }
+      { status: 'preparing', changed_at: Date.now() - 1000 * 60 * 2 },
+      { status: 'completed', changed_at: Date.now() - 1000 * 60 * 1 }
     ],
     specialInstructions: 'Make risotto extra creamy please! No garlic in sparkler.',
     couponApplied: 'SAVOUR20'
@@ -513,11 +514,12 @@ export const INITIAL_ORDERS: Order[] = ([
     tax: 4.4,
     tip: 6,
     total: 65.4,
-    status: 'placed',
+    status: 'completed',
     created_at: Date.now() - 1000 * 60 * 3,
     updated_at: Date.now() - 1000 * 60 * 3,
     status_history: [
-      { status: 'placed', changed_at: Date.now() - 1000 * 60 * 3 }
+      { status: 'placed', changed_at: Date.now() - 1000 * 60 * 3 },
+      { status: 'completed', changed_at: Date.now() - 1000 * 60 * 1 }
     ],
     specialInstructions: 'Medium well burgers.'
   }
