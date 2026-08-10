@@ -81,10 +81,11 @@ export interface Order {
   created_at: number;
   updated_at: number;
   status_history: OrderStatusHistoryItem[];
-  specialInstructions?: string;
-  customerName?: string;
   discount?: number;
   couponApplied?: string;
+  customerName?: string;
+  specialInstructions?: string;
+  isMock?: boolean;
 }
 
 export type WaiterRequestType = 'water' | 'call_waiter' | 'bring_bill' | 'clean_table';

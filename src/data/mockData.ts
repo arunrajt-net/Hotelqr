@@ -1,4 +1,4 @@
-import type { MenuItem, TableInfo, Order } from '../types';
+import type { MenuItem, TableInfo, Order, OrderStatus } from '../types';
 
 export const INITIAL_MENU_ITEMS: MenuItem[] = [
   {
@@ -258,7 +258,7 @@ const todayStart = new Date();
 todayStart.setHours(0,0,0,0);
 const startMs = todayStart.getTime();
 
-export const INITIAL_ORDERS: Order[] = [
+export const INITIAL_ORDERS: Order[] = ([
   {
     id: 'ORD-1001',
     orderNumber: '1001',
@@ -521,5 +521,10 @@ export const INITIAL_ORDERS: Order[] = [
     ],
     specialInstructions: 'Medium well burgers.'
   }
-];
+]).map((o) => ({
+  ...o,
+  isMock: true,
+  status: o.status as OrderStatus,
+  status_history: o.status_history.map((sh) => ({ ...sh, status: sh.status as OrderStatus }))
+}));
 

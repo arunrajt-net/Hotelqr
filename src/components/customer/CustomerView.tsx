@@ -121,12 +121,12 @@ export const CustomerView: React.FC<CustomerViewProps> = ({ onOpenCart, onOpenOr
   // Active order for current table
   const activeOrderForTable = useMemo(() => {
     return orders.find(
-      (o) => o.table_id === selectedTableId && ['placed', 'accepted', 'preparing', 'ready', 'served'].includes(o.status)
+      (o) => o.table_id === selectedTableId && !o.isMock && ['placed', 'accepted', 'preparing', 'ready', 'served'].includes(o.status)
     );
   }, [orders, selectedTableId]);
 
   const tableOrders = useMemo(() => {
-    return orders.filter((o) => o.table_id === selectedTableId);
+    return orders.filter((o) => o.table_id === selectedTableId && !o.isMock);
   }, [orders, selectedTableId]);
 
   const activeOrdersCount = useMemo(() => {
