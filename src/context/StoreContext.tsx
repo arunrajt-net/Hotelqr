@@ -98,7 +98,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('savour_waiter_requests', JSON.stringify(waiterRequests));
   }, [waiterRequests]);
 
-  const CLOUD_SYNC_ORDERS_URL = 'https://kvdb.io/KG4zVw2Mke6GtrQbFnPdQy/savour_orders_v3';
+  const CLOUD_SYNC_ORDERS_URL = 'https://kvdb.io/KG4zVw2Mke6GtrQbFnPdQy/savour_orders_v4';
 
   // Push orders to cloud whenever orders state changes locally
   const pushOrdersToCloud = useCallback(async (currentOrders: Order[]) => {
@@ -113,13 +113,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  // Poll cloud storage every 4 seconds for real-time cross-device sync
+  // Poll cloud storage every 2 seconds for real-time cross-device sync
   useEffect(() => {
     const syncFromCloud = async () => {
       try {
         const res = await fetch(CLOUD_SYNC_ORDERS_URL);
         if (!res.ok) return;
-        const cloudOrders: Order[] = await res.json();
+        const text = await res.text();
+        if (!text || text.trim() === '' || text.includes('Not Found')) return;
+        const cloudOrders: Order[] = JSON.parse(text);
         if (Array.isArray(cloudOrders) && cloudOrders.length > 0) {
           setOrders((prev) => {
             let updated = false;
@@ -143,7 +145,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     syncFromCloud();
-    const interval = setInterval(syncFromCloud, 4000);
+    const interval = setInterval(syncFromCloud, 2000);
     return () => clearInterval(interval);
   }, []);
 

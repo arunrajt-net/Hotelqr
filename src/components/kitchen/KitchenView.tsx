@@ -24,9 +24,10 @@ const COL_BADGE_CLASS: Record<string, string> = {
 
 export const KitchenView: React.FC = () => {
   const { orders, updateOrderStatus, undoOrderStatus } = useStore();
-  const [pinInput, setPinInput]         = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [now, setNow] = useState(Date.now());
+  const [pinInput, setPinInput]                 = useState('');
+  const [isAuthenticated, setIsAuthenticated]   = useState(true);
+  const [now, setNow]                           = useState(Date.now());
+  const [mobileTab, setMobileTab]               = useState<'all' | 'new' | 'preparing' | 'ready'>('all');
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 15000);
@@ -133,6 +134,10 @@ export const KitchenView: React.FC = () => {
     !o.isMock && ['placed', 'accepted', 'preparing', 'ready'].includes(o.status)
   );
 
+  const newCount       = activeOrders.filter((o) => o.status === 'placed').length;
+  const preparingCount = activeOrders.filter((o) => ['accepted', 'preparing'].includes(o.status)).length;
+  const readyCount     = activeOrders.filter((o) => o.status === 'ready').length;
+
   const getElapsedBadge = (createdAt: number) => {
     const mins = Math.floor((now - createdAt) / 60000);
     let color = 'var(--accent-green)';
@@ -172,14 +177,14 @@ export const KitchenView: React.FC = () => {
       style={{ minHeight: '100vh', background: 'var(--bg-base)', padding: '0 0 40px' }}
       className="font-inter"
     >
-      {/* ── Header ── */}
+      {/* ── Responsive Header ── */}
       <div
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 24px',
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px 20px', gap: 12,
           background: 'var(--surface)',
           borderBottom: '1px solid var(--border-subtle)',
-          marginBottom: 24,
+          marginBottom: 16,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -187,28 +192,28 @@ export const KitchenView: React.FC = () => {
             style={{
               width: 40, height: 40, borderRadius: '50%',
               background: 'rgba(255,138,52,0.15)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
             }}
           >
             <ShieldCheck style={{ width: 20, height: 20, color: 'var(--accent-orange)' }} />
           </div>
           <div>
-            <h1 className="font-sora" style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>
-              Kitchen Display Station
-            </h1>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-              Real-time order stream · Auto-sync active
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 className="font-sora" style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1, margin: 0 }}>
+                Kitchen Display Station
+              </h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 'var(--radius-pill)', background: 'rgba(76,175,114,0.12)', border: '1px solid rgba(76,175,114,0.2)' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-green)', display: 'block' }} />
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--accent-green)' }}>LIVE</span>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4, margin: 0 }}>
+              Real-time multi-device order stream active
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Live indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--radius-pill)', background: 'rgba(76,175,114,0.12)', border: '1px solid rgba(76,175,114,0.2)' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-green)', display: 'block' }} />
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-green)' }}>LIVE</span>
-          </div>
-
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button
             onClick={() => sounds.playNewOrderBell()}
             style={{
@@ -243,20 +248,55 @@ export const KitchenView: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Kanban Board ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, padding: '0 24px' }}>
+      {/* ── Mobile Column Switcher (Visible on Phones <768px) ── */}
+      <div className="kitchen-mobile-tabs-container">
+        <div style={{
+          display: 'flex', gap: 6, overflowX: 'auto', padding: '0 16px', marginBottom: 16
+        }} className="no-scrollbar">
+          {[
+            { id: 'all', label: `📱 All Columns (${activeOrders.length})` },
+            { id: 'new', label: `🔔 New (${newCount})` },
+            { id: 'preparing', label: `🍳 Preparing (${preparingCount})` },
+            { id: 'ready', label: `✅ Ready (${readyCount})` }
+          ].map((tab) => {
+            const isActive = mobileTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setMobileTab(tab.id as any)}
+                style={{
+                  flexShrink: 0, padding: '8px 14px', borderRadius: 999,
+                  fontSize: '0.8rem', fontWeight: 700, border: 'none', cursor: 'pointer',
+                  background: isActive ? 'var(--accent-orange)' : 'var(--surface)',
+                  color: isActive ? '#FFF' : 'var(--text-secondary)',
+                  boxShadow: isActive ? '0 4px 12px rgba(255,138,52,0.3)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Kanban Board Container ── */}
+      <div className="kitchen-board-grid">
         {COLUMNS.map((col) => {
+          if (mobileTab !== 'all' && mobileTab !== col.key) return null;
+
           const colOrders = activeOrders.filter((o) => col.statuses.includes(o.status));
           const accent = COL_ACCENT[col.key];
 
           return (
-            <div key={col.key} className="kitchen-col">
+            <div key={col.key} className="kitchen-col" style={{ width: '100%' }}>
               {/* Column Header */}
               <div
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   paddingBottom: 12,
                   borderBottom: `2px solid ${accent}`,
+                  marginBottom: 12
                 }}
               >
                 <span className="font-sora" style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>
@@ -272,7 +312,7 @@ export const KitchenView: React.FC = () => {
 
               {/* Empty State */}
               {colOrders.length === 0 && (
-                <div style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                <div style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem', background: 'var(--surface)', borderRadius: 16 }}>
                   No active tickets
                 </div>
               )}
@@ -286,9 +326,10 @@ export const KitchenView: React.FC = () => {
                   <div
                     key={ticket.id}
                     className={`${ticketClass}${isNew ? ' animate-ticket-new' : ''}`}
+                    style={{ width: '100%', marginBottom: 12 }}
                   >
                     {/* Ticket Header */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <div>
                         <span className="font-sora" style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                           Table {ticket.table_id}
@@ -304,7 +345,7 @@ export const KitchenView: React.FC = () => {
                     <div
                       style={{
                         display: 'flex', flexDirection: 'column', gap: 6,
-                        borderTop: '1px solid var(--border-subtle)', paddingTop: 10,
+                        borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginBottom: 10
                       }}
                     >
                       {ticket.items.map((item, idx) => (
@@ -398,6 +439,27 @@ export const KitchenView: React.FC = () => {
           );
         })}
       </div>
+
+      <style>{`
+        .kitchen-board-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          padding: 0 16px;
+        }
+
+        @media (min-width: 768px) {
+          .kitchen-board-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 16px !important;
+            padding: 0 24px !important;
+          }
+          .kitchen-mobile-tabs-container {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
