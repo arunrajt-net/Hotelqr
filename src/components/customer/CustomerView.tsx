@@ -120,13 +120,33 @@ export const CustomerView: React.FC<CustomerViewProps> = ({ onOpenCart, onOpenOr
 
   // Active order for current table
   const activeOrderForTable = useMemo(() => {
-    return orders.find(
-      (o) => o.table_id === selectedTableId && !o.isMock && ['placed', 'accepted', 'preparing', 'ready', 'served'].includes(o.status)
-    );
+    const now = Date.now();
+    const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
+    return orders.find((o) => {
+      if (o.table_id !== selectedTableId || o.isMock) return false;
+      if (['placed', 'accepted', 'preparing', 'ready'].includes(o.status)) return true;
+      if (['served', 'completed'].includes(o.status)) {
+        const lastUpdated = o.updated_at || o.created_at;
+        return (now - lastUpdated) <= FIVE_HOURS_MS;
+      }
+      return false;
+    });
   }, [orders, selectedTableId]);
 
   const tableOrders = useMemo(() => {
-    return orders.filter((o) => o.table_id === selectedTableId && !o.isMock);
+    const now = Date.now();
+    const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
+    return orders.filter((o) => {
+      if (o.table_id !== selectedTableId || o.isMock) return false;
+      // Rule 1: Always show active (unfinished) orders no matter how old
+      if (['placed', 'accepted', 'preparing', 'ready'].includes(o.status)) return true;
+      // Rule 2: Show finished orders ONLY if updated/completed within the last 5 hours
+      if (['served', 'completed'].includes(o.status)) {
+        const lastUpdated = o.updated_at || o.created_at;
+        return (now - lastUpdated) <= FIVE_HOURS_MS;
+      }
+      return false;
+    });
   }, [orders, selectedTableId]);
 
   const activeOrdersCount = useMemo(() => {

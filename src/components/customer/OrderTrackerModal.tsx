@@ -40,7 +40,15 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({ isOpen, on
 
   if (!isOpen) return null;
 
-  const activeOrder = orders.find((o) => o.table_id === selectedTableId && !o.isMock && o.status !== 'completed' && o.status !== 'cancelled') || orders.find((o) => o.table_id === selectedTableId && !o.isMock);
+  const activeOrder = orders.find((o) => {
+    if (o.table_id !== selectedTableId || o.isMock) return false;
+    if (['placed', 'accepted', 'preparing', 'ready'].includes(o.status)) return true;
+    if (['served', 'completed'].includes(o.status)) {
+      const lastUpdated = o.updated_at || o.created_at;
+      return (Date.now() - lastUpdated) <= 5 * 60 * 60 * 1000;
+    }
+    return false;
+  });
 
   if (!activeOrder) {
     return (
