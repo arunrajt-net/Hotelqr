@@ -16,7 +16,7 @@ export const QrGeneratorModal: React.FC<QrGeneratorModalProps> = ({ isOpen, onCl
     setTableId(defaultTableId);
   }, [defaultTableId]);
 
-  const targetUrl = `${window.location.origin}${window.location.pathname}?table=${tableId}`;
+  const targetUrl = `${window.location.origin}/?table=${tableId}`;
 
   useEffect(() => {
     if (!isOpen) return;
