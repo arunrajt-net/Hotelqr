@@ -330,11 +330,23 @@ export const KitchenView: React.FC = () => {
                   >
                     {/* Ticket Header */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <div>
-                        <span className="font-sora" style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span
+                          className="font-sora"
+                          style={{
+                            fontSize: '0.85rem',
+                            fontWeight: 800,
+                            color: '#FFFFFF',
+                            background: accent,
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-pill)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}
+                        >
                           Table {ticket.table_id}
                         </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: 8 }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                           #{ticket.orderNumber}
                         </span>
                       </div>
@@ -344,13 +356,25 @@ export const KitchenView: React.FC = () => {
                     {/* Item List */}
                     <div
                       style={{
-                        display: 'flex', flexDirection: 'column', gap: 6,
-                        borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginBottom: 10
+                        display: 'flex', flexDirection: 'column', gap: 10,
+                        borderTop: '1px solid var(--border-subtle)', paddingTop: 12, marginBottom: 12
                       }}
                     >
                       {ticket.items.map((item, idx) => (
-                        <div key={idx}>
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: '0.9375rem' }}>
+                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9375rem' }}>
+                            {/* Veg/Non-veg Dot Indicator */}
+                            <span
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                background: item.is_veg ? '#4CAF50' : '#E53935',
+                                display: 'inline-block',
+                                flexShrink: 0
+                              }}
+                              title={item.is_veg ? 'Veg' : 'Non-Veg'}
+                            />
                             <span className="font-sora" style={{ fontWeight: 700, color: 'var(--accent-orange)' }}>
                               {item.qty}×
                             </span>
@@ -358,6 +382,29 @@ export const KitchenView: React.FC = () => {
                               {item.name}
                             </span>
                           </div>
+
+                          {/* Custom Options / Addons */}
+                          {item.options && item.options.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginLeft: 16, marginTop: 2 }}>
+                              {item.options.map((opt, oIdx) => (
+                                <span
+                                  key={oIdx}
+                                  style={{
+                                    fontSize: '0.7rem',
+                                    background: 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    color: 'var(--text-secondary)',
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    fontWeight: 500
+                                  }}
+                                >
+                                  {opt.categoryName}: <span style={{ color: 'var(--accent-orange)', fontWeight: 600 }}>{opt.optionLabel}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
                           {item.notes && (
                             <p
                               style={{
@@ -367,6 +414,7 @@ export const KitchenView: React.FC = () => {
                                 padding: '2px 8px',
                                 borderRadius: 'var(--radius-sm)',
                                 marginTop: 3,
+                                marginLeft: 16,
                                 fontWeight: 500,
                               }}
                             >

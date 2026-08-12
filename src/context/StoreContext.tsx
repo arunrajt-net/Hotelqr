@@ -98,45 +98,96 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('savour_waiter_requests', JSON.stringify(waiterRequests));
   }, [waiterRequests]);
 
-  const CLOUD_SYNC_ORDERS_URL = 'https://kvdb.io/KG4zVw2Mke6GtrQbFnPdQy/savour_orders_v4';
+  const CLOUD_ORDERS_URL = 'https://savour-hotel.asia-southeast1.firebasedatabase.app/orders';
+  const CLOUD_REQUESTS_URL = 'https://savour-hotel.asia-southeast1.firebasedatabase.app/requests';
 
-  // Push orders to cloud whenever orders state changes locally
-  const pushOrdersToCloud = useCallback(async (currentOrders: Order[]) => {
+  // Push individual order to Firebase
+  const pushOrderToCloud = useCallback(async (order: Order) => {
     try {
-      await fetch(CLOUD_SYNC_ORDERS_URL, {
+      await fetch(`${CLOUD_ORDERS_URL}/${order.id}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(currentOrders),
+        body: JSON.stringify(order),
       });
     } catch {
       // Ignore network errors
     }
   }, []);
 
-  // Poll cloud storage every 2 seconds for real-time cross-device sync
+  // Push individual request to Firebase
+  const pushWaiterRequestToCloud = useCallback(async (req: WaiterRequest) => {
+    try {
+      await fetch(`${CLOUD_REQUESTS_URL}/${req.id}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req),
+      });
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  // Delete individual request from Firebase
+  const deleteWaiterRequestFromCloud = useCallback(async (requestId: string) => {
+    try {
+      await fetch(`${CLOUD_REQUESTS_URL}/${requestId}.json`, {
+        method: 'DELETE',
+      });
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  // Poll Firebase Realtime Database every 2 seconds for real-time cross-device sync
   useEffect(() => {
     const syncFromCloud = async () => {
       try {
-        const res = await fetch(CLOUD_SYNC_ORDERS_URL);
-        if (!res.ok) return;
-        const text = await res.text();
-        if (!text || text.trim() === '' || text.includes('Not Found')) return;
-        const cloudOrders: Order[] = JSON.parse(text);
-        if (Array.isArray(cloudOrders) && cloudOrders.length > 0) {
-          setOrders((prev) => {
-            let updated = false;
-            const merged = [...prev];
-            cloudOrders.forEach((co) => {
-              const idx = merged.findIndex((o) => o.id === co.id);
-              if (idx === -1) {
-                merged.unshift(co);
-                updated = true;
-              } else if (merged[idx].status !== co.status || merged[idx].updated_at !== co.updated_at) {
-                merged[idx] = co;
-                updated = true;
+        // 1. Sync orders
+        const ordersRes = await fetch(`${CLOUD_ORDERS_URL}.json`);
+        if (ordersRes.ok) {
+          const ordersData = await ordersRes.json();
+          const cloudOrders: Order[] = ordersData ? Object.values(ordersData) : [];
+          if (cloudOrders.length > 0) {
+            setOrders((prev) => {
+              let updated = false;
+              const merged = [...prev];
+              cloudOrders.forEach((co) => {
+                const idx = merged.findIndex((o) => o.id === co.id);
+                if (idx === -1) {
+                  merged.push(co);
+                  updated = true;
+                } else {
+                  const localOrder = merged[idx];
+                  const cloudTime = co.updated_at || co.created_at || 0;
+                  const localTime = localOrder.updated_at || localOrder.created_at || 0;
+                  if (localOrder.status !== co.status || cloudTime > localTime || localOrder.table_id !== co.table_id) {
+                    merged[idx] = co;
+                    updated = true;
+                  }
+                }
+              });
+              if (updated) {
+                merged.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+                localStorage.setItem('savour_orders', JSON.stringify(merged));
+                return merged;
               }
+              return prev;
             });
-            return updated ? merged : prev;
+          }
+        }
+
+        // 2. Sync waiter requests
+        const requestsRes = await fetch(`${CLOUD_REQUESTS_URL}.json`);
+        if (requestsRes.ok) {
+          const requestsData = await requestsRes.json();
+          const cloudRequests: WaiterRequest[] = requestsData ? Object.values(requestsData) : [];
+          setWaiterRequests((prev) => {
+            const sortedCloud = [...cloudRequests].sort((a, b) => b.createdAt - a.createdAt);
+            if (JSON.stringify(prev) !== JSON.stringify(sortedCloud)) {
+              localStorage.setItem('savour_waiter_requests', JSON.stringify(sortedCloud));
+              return sortedCloud;
+            }
+            return prev;
           });
         }
       } catch {
@@ -151,8 +202,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     localStorage.setItem('savour_orders', JSON.stringify(orders));
-    pushOrdersToCloud(orders);
-  }, [orders, pushOrdersToCloud]);
+  }, [orders]);
 
   // Broadcast Channel setup for Instant Cross-Tab Sync
   const broadcastSync = useCallback((event: { type: string; payload: any }) => {
@@ -341,6 +391,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setOrders((prev) => [newOrder, ...prev]);
+    pushOrderToCloud(newOrder);
     clearCart();
 
     // Mark table active order
@@ -359,22 +410,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
     const timestamp = Date.now();
     let updatedHistory: any[] = [];
+    let updatedOrder: Order | null = null;
 
     setOrders((prev) =>
       prev.map((o) => {
         if (o.id === orderId) {
           const history = o.status_history || [];
           updatedHistory = [...history, { status: newStatus, changed_at: timestamp }];
-          return {
+          updatedOrder = {
             ...o,
             status: newStatus,
             updated_at: timestamp,
             status_history: updatedHistory
           };
+          return updatedOrder;
         }
         return o;
       })
     );
+
+    setTimeout(() => {
+      if (updatedOrder) {
+        pushOrderToCloud(updatedOrder);
+      }
+    }, 0);
 
     broadcastSync({ type: 'UPDATE_ORDER_STATUS', payload: { orderId, newStatus, status_history: updatedHistory } });
 
@@ -386,6 +445,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const undoOrderStatus = (orderId: string) => {
     const statusSequence: OrderStatus[] = ['placed', 'accepted', 'preparing', 'ready', 'served', 'completed'];
+    let updatedOrder: Order | null = null;
+
     setOrders((prev) =>
       prev.map((o) => {
         if (o.id === orderId) {
@@ -393,24 +454,46 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (currentIdx > 0) {
             const prevStatus = statusSequence[currentIdx - 1];
             const newHistory = (o.status_history || []).slice(0, -1);
-            return {
+            updatedOrder = {
               ...o,
               status: prevStatus,
               updated_at: Date.now(),
               status_history: newHistory
             };
+            return updatedOrder;
           }
         }
         return o;
       })
     );
+
+    setTimeout(() => {
+      if (updatedOrder) {
+        pushOrderToCloud(updatedOrder);
+      }
+    }, 0);
   };
 
   const updateOrderTable = (orderId: string, newTableId: string) => {
     const tableNumber = parseInt(newTableId.replace(/\D/g, ''), 10) || 1;
+    let updatedOrder: Order | null = null;
+
     setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, table_id: newTableId, table_number: tableNumber } : o))
+      prev.map((o) => {
+        if (o.id === orderId) {
+          updatedOrder = { ...o, table_id: newTableId, table_number: tableNumber, updated_at: Date.now() };
+          return updatedOrder;
+        }
+        return o;
+      })
     );
+
+    setTimeout(() => {
+      if (updatedOrder) {
+        pushOrderToCloud(updatedOrder);
+      }
+    }, 0);
+
     broadcastSync({ type: 'UPDATE_ORDER_TABLE', payload: { orderId, newTableId, newTableNumber: tableNumber } });
     addToast('Table Updated', `Order transferred to Table ${newTableId}`, 'success');
   };
@@ -426,6 +509,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setWaiterRequests((prev) => [req, ...prev]);
+    pushWaiterRequestToCloud(req);
     broadcastSync({ type: 'WAITER_REQUEST', payload: req });
     sounds.playWaiterCallChime();
     addToast('Service Requested', `Staff notified: "${label}" for ${selectedTableId}`, 'info');
@@ -433,6 +517,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const resolveWaiterRequest = (requestId: string) => {
     setWaiterRequests((prev) => prev.filter((r) => r.id !== requestId));
+    deleteWaiterRequestFromCloud(requestId);
     broadcastSync({ type: 'RESOLVE_WAITER_REQUEST', payload: { requestId } });
   };
 
